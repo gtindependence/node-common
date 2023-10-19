@@ -7,7 +7,7 @@ This decorator will wrap your whole function into a try/catch and you can pass a
 
 ```typescript
     // Main file, right after bootstrap of application **caught error will be handled here**
-    import { TryCatchEmitter } from '@teamhive/node-common';
+    import { TryCatchEmitter } from '@gtindependence/node-common';
     // This will setup any baseExceptions that may get thrown that you dont want to wrap with the wrapping class
     TryCatchEmitter.baseException = [MyBaseException, HttpException];
     TryCatchEmitter.listen((error) => errorHandler.captureException(error));
@@ -54,7 +54,7 @@ At the very beginning in your index file you should setup our very basic event l
 
     // setup uncaught exception handling
     try {
-        const NodeEventHandler = require('@teamhive/node-common').NodeEventHandler;
+        const NodeEventHandler = require('@gtindependence/node-common').NodeEventHandler;
 
         NodeEventHandler.logUncaughtException();
         NodeEventHandler.logUnhandleRejection();
@@ -69,7 +69,7 @@ At the very beginning in your index file you should setup our very basic event l
 
 Once your app bootstraps and you have access to your error handler, you can pass that to it
 ```typescript
-    import { NodeEventHandler } from '@teamhive/node-common';
+    import { NodeEventHandler } from '@gtindependence/node-common';
 
     // Get you errorHandler our of Reflector or whereever it is constructed
 
