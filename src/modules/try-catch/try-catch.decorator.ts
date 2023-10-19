@@ -42,7 +42,7 @@ export function TryCatch(optionsOrException = {} as TryCatchOptions | TryCatchEx
                             beeline.finishSpan(trace);
                         });
                     }
-                    // if there is an active trace, add a span to the trace 
+                    // if there is an active trace, add a span to the trace
                     else {
                         return await beeline.startAsyncSpan(tryCatchOptions.createTrace, async (span) => {
                             return await runFunctionAsync(() => {
@@ -50,7 +50,7 @@ export function TryCatch(optionsOrException = {} as TryCatchOptions | TryCatchEx
                             })
                         })
                     }
-                } 
+                }
                 // if tracing is not enabled, just run the function
                 else {
                     return await runFunctionAsync();
@@ -83,14 +83,14 @@ export function TryCatch(optionsOrException = {} as TryCatchOptions | TryCatchEx
                             beeline.finishSpan(trace);
                         });
                     }
-                    // if there is an active trace, add a span to the trace 
+                    // if there is an active trace, add a span to the trace
                     else {
                         const span = beeline.startSpan()
                         return runFunction(() => {
                                 beeline.finishSpan(span);
                         });
                     }
-                } 
+                }
                 // if tracing is not enabled, just run the function
                 else {
                     return runFunction()
