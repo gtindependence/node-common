@@ -1,5 +1,5 @@
 import * as Sentry from '@sentry/node';
-import * as faker from 'faker';
+import { faker } from '@faker-js/faker/locale/en';
 import { Logger } from 'log4js';
 import * as Raven from 'raven';
 import { StaticErrorHandlerService } from './static-error-handler';
@@ -9,7 +9,7 @@ class StubError extends Error {
     extraData: any;
 
     tags?: any;
-    
+
     constructor(message: string, extraData: any, tags?: any) {
         super(message);
 
@@ -29,10 +29,10 @@ describe('StaticErrorHandlerService', () => {
         process.env = { ...OLD_ENV, DEPLOYMENT: 'aws' }; // Make a copy
 
         jest.spyOn(Sentry, 'captureException').mockImplementation(() => {
-            return faker.datatype.uuid()
+            return faker.string.uuid()
         });
         jest.spyOn(Raven, 'captureException').mockImplementation(() => {
-            return faker.datatype.uuid()
+            return faker.string.uuid()
         });
 
         StaticErrorHandlerService.logger = {
@@ -52,18 +52,18 @@ describe('StaticErrorHandlerService', () => {
     describe('isAcceptableSize', () => {
         it('should return false when given data is larger than the limit', async () => {
             const extraData = new Array(1000).map(() => faker.lorem.paragraph());
-            
+
             const error = new StubError('Test Error', extraData);
-            
+
             const result: boolean = StaticErrorHandlerService.isAcceptableSize(error, 1000);
 
             expect(result).toBe(false)
         });
 
         it('should return true when given data smaller than the limit', async () => {
-            
+
             const error = new StubError('Test Error', []);
-            
+
             const result: boolean = StaticErrorHandlerService.isAcceptableSize(error, 1000);
 
             expect(result).toBe(false)
@@ -95,7 +95,7 @@ describe('StaticErrorHandlerService', () => {
             jest.spyOn(StaticErrorHandlerService, 'sanitizeUnacceptablyLargeError').mockImplementation(() => sanitizedError);
 
             StaticErrorHandlerService.captureException(largeError);
-            
+
             expect(Sentry.captureException).toBeCalledWith(sanitizedError, {tags: {tag1: 'value'}});
         });
 
@@ -108,7 +108,7 @@ describe('StaticErrorHandlerService', () => {
             jest.spyOn(StaticErrorHandlerService, 'sanitizeUnacceptablyLargeError').mockImplementation(() => sanitizedError);
 
             StaticErrorHandlerService.captureException(largeError);
-            
+
             expect(Sentry.captureException).toBeCalledWith(largeError, {tags: {tag1: 'value'}});
         });
 
@@ -116,7 +116,7 @@ describe('StaticErrorHandlerService', () => {
         it('it should create an error to capture if the function is called with an undefined error', () => {
             jest.spyOn(StaticErrorHandlerService, 'captureUndefinedException').mockImplementation(() =>{})
             StaticErrorHandlerService.captureException(undefined);
-            
+
             expect(StaticErrorHandlerService.captureUndefinedException).toBeCalled()
         })
     })

@@ -4,7 +4,7 @@ import * as Raven from 'raven';
 import { Breadcrum } from '../interfaces';
 import { TryCatchEmitter, TryCatchException, TryCatchOptions } from '../try-catch';
 import { catchError as catchErrorUtil } from '../try-catch/catch-error.util';
-import { getLogger } from '../utility/get-logger';
+import { getLogger } from '../utility';
 import beeline = require('honeycomb-beeline');
 
 
@@ -78,7 +78,7 @@ export class StaticErrorHandlerService {
                 return sentryId;
             }
         } else if (!error) {
-            
+
             this.captureUndefinedException();
         }
 
@@ -103,7 +103,7 @@ export class StaticErrorHandlerService {
                         ...this.getTraceTag(),
                         ...errorTags,
                         ...tags,
-                        
+
                     }
                 });
             }
@@ -148,7 +148,7 @@ export class StaticErrorHandlerService {
             error = errorOrException;
             tags = errorOrException?.tags;
         }
-        
+
         return { error, tags: tags ?? {} };
     }
 
@@ -179,7 +179,7 @@ export class StaticErrorHandlerService {
      * is left
      */
     static sanitizeUnacceptablyLargeError(object: any) {
-        // get a list of all keys except the message and the stack 
+        // get a list of all keys except the message and the stack
         const keys = Object.keys(object).filter(key => !['message', 'stack'].includes(key));
 
         // remove all other keys
