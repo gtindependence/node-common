@@ -1,7 +1,6 @@
 import * as Sentry from '@sentry/node';
 import { faker } from '@faker-js/faker/locale/en';
 import { Logger } from 'log4js';
-import * as Raven from 'raven';
 import { StaticErrorHandlerService } from './static-error-handler';
 
 class StubError extends Error {
@@ -29,9 +28,6 @@ describe('StaticErrorHandlerService', () => {
         process.env = { ...OLD_ENV, DEPLOYMENT: 'aws' }; // Make a copy
 
         jest.spyOn(Sentry, 'captureException').mockImplementation(() => {
-            return faker.string.uuid()
-        });
-        jest.spyOn(Raven, 'captureException').mockImplementation(() => {
             return faker.string.uuid()
         });
 

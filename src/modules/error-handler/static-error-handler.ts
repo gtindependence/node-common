@@ -1,6 +1,5 @@
 import * as Sentry from '@sentry/node';
 import { Logger } from 'log4js';
-import * as Raven from 'raven';
 import { Breadcrum } from '../interfaces';
 import { TryCatchEmitter, TryCatchException, TryCatchOptions } from '../try-catch';
 import { catchError as catchErrorUtil } from '../try-catch/catch-error.util';
@@ -16,11 +15,11 @@ export interface StaticErrorHandlerConfiguration {
 }
 
 /**
- * This ErrorHandler works as a static class with an app configured for Raven.  No instance has to be
+ * This ErrorHandler works as a static class with an app configured for Sentry.  No instance has to be
  * created for this error handler.
  */
 
-export const RAVEN_DISPLAY_LIMIT = 32752;
+export const ERROR_DISPLAY_LIMIT = 32752;
 
 export class StaticErrorHandlerService {
     static logger = getLogger();
@@ -34,13 +33,8 @@ export class StaticErrorHandlerService {
     }
 
     static captureBreadcrumb(breadcrumb: Breadcrum | Sentry.Breadcrumb, logger?: Logger, configuration: StaticErrorHandlerConfiguration = this.configuration) {
-        if (process.env.DEPLOYMENT) {
-            if (configuration.useSentry) {
-                Sentry.addBreadcrumb(breadcrumb);
-            }
-            else {
-                Raven.captureBreadcrumb(breadcrumb);
-            }
+        if (process.env.DEPLOYMENT && configuration.useSentry) {
+            Sentry.addBreadcrumb(breadcrumb);
         }
 
         (logger || this.logger).info(breadcrumb.message, breadcrumb.data ? breadcrumb.data : '');
@@ -51,7 +45,7 @@ export class StaticErrorHandlerService {
         let { error, tags = {} } = this.parseException(errorOrException);
         const {errorTags = {}} = configuration;
         if (process.env.DEPLOYMENT && error) {
-            if (!this.isAcceptableSize(error, RAVEN_DISPLAY_LIMIT)) {
+            if (!this.isAcceptableSize(error, ERROR_DISPLAY_LIMIT)) {
                 this.captureMessage(
                     `Error with message "${error.message}" is too large and will not have all data displayed.`
                 );
@@ -64,15 +58,6 @@ export class StaticErrorHandlerService {
                     ...errorTags,
                     ...tags,
                 } });
-
-                this.addSentryContextToTrace(error, sentryId);
-                return sentryId;
-            } else {
-                const sentryId = Raven.captureException(error, (e: any) => {
-                    if (e) {
-                        this.logger.error(e);
-                    }
-                });
 
                 this.addSentryContextToTrace(error, sentryId);
                 return sentryId;
@@ -96,24 +81,15 @@ export class StaticErrorHandlerService {
 
     static captureMessage(message: string, logger?: Logger, configuration: StaticErrorHandlerConfiguration = this.configuration, tags: {[key: string]: string} = {}) {
         const {errorTags = {}} = configuration;
-        if (process.env.DEPLOYMENT) {
-            if (configuration.useSentry) {
-                Sentry.captureMessage(message, {
-                    tags: {
-                        ...this.getTraceTag(),
-                        ...errorTags,
-                        ...tags,
+        if (process.env.DEPLOYMENT && configuration.useSentry) {
+            Sentry.captureMessage(message, {
+                tags: {
+                    ...this.getTraceTag(),
+                    ...errorTags,
+                    ...tags,
 
-                    }
-                });
-            }
-            else {
-                Raven.captureMessage(message, (e: any) => {
-                    if (e) {
-                        this.logger.error(e);
-                    }
-                });
-            }
+                }
+            });
         }
 
         (logger || this.logger).info(message);
