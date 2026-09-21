@@ -4,8 +4,6 @@ import { Breadcrum } from '../interfaces';
 import { TryCatchEmitter, TryCatchException, TryCatchOptions } from '../try-catch';
 import { catchError as catchErrorUtil } from '../try-catch/catch-error.util';
 import { getLogger } from '../utility';
-import beeline = require('honeycomb-beeline');
-
 
 export interface StaticErrorHandlerConfiguration {
     useSentry: boolean;
@@ -54,12 +52,10 @@ export class StaticErrorHandlerService {
 
             if (configuration.useSentry) {
                 const sentryId =  Sentry.captureException(error, { tags: {
-                    ...this.getTraceTag(),
                     ...errorTags,
                     ...tags,
                 } });
 
-                this.addSentryContextToTrace(error, sentryId);
                 return sentryId;
             }
         } else if (!error) {
@@ -84,7 +80,6 @@ export class StaticErrorHandlerService {
         if (process.env.DEPLOYMENT && configuration.useSentry) {
             Sentry.captureMessage(message, {
                 tags: {
-                    ...this.getTraceTag(),
                     ...errorTags,
                     ...tags,
 
@@ -164,38 +159,5 @@ export class StaticErrorHandlerService {
         });
 
         return object;
-    }
-
-    /**
-     * Appends the traceId as a tag that can be sent to sentry
-     */
-    private static getTraceTag() {
-        const beelineEnabled = !!beeline['_apiForTesting']();
-
-        if (beelineEnabled) {
-            const traceContext = beeline.getTraceContext();
-            if (traceContext && traceContext.id) {
-                return {
-                    traceId: traceContext.id
-                }
-            }
-        }
-        return {};
-    }
-
-    private static addSentryContextToTrace(exception: Error, sentryId: string) {
-        const beelineEnabled = !!beeline['_apiForTesting']();
-        if (beelineEnabled) {
-            const traceContext = beeline.getTraceContext();
-            if (traceContext && traceContext.id) {
-                // append to the span so each span that causes an error has context around the request that was created
-                beeline.addContext({
-                    'error.sentryId': sentryId,
-                    'error.name': Object.getPrototypeOf(exception)?.constructor?.name,
-                    'error.message': exception.message
-                });
-            }
-        }
-        return {};
     }
 }
