@@ -14,9 +14,13 @@ export class NodeEventHandler {
     static handleUnhandledRejection(errorHandler: ErrorHandler) {
         process.removeListener('unhandledRejection', NodeEventHandler.logRejection);
 
-        process.on('unhandledRejection', async (error: any) => {
+        process.on('unhandledRejection', async (error: unknown) => {
             try {
-                await errorHandler.captureException(new UnhandledPromiseException(error));
+                await errorHandler.captureException(
+                    new UnhandledPromiseException(
+                        error instanceof Error ? error : new Error(String(error))
+                    )
+                );
             } catch (error) {
                 this.logRejection(error);
             }
@@ -26,20 +30,24 @@ export class NodeEventHandler {
     static handleUncaughtException(errorHandler: ErrorHandler) {
         process.removeListener('uncaughtException', NodeEventHandler.logException);
 
-        process.on('uncaughtException', async (error: any) => {
+        process.on('uncaughtException', async (error: unknown) => {
             try {
-                await errorHandler.captureException(new UncaughtException(error));
+                await errorHandler.captureException(
+                    new UncaughtException(
+                        error instanceof Error ? error : new Error(String(error))
+                    )
+                );
             } catch (error) {
                 this.logException(error);
             }
         });
     }
 
-    private static logRejection(error: any) {
+    private static logRejection(error: unknown) {
         getLogger().error('UNHANDLED REJECTION:', error);
     }
 
-    private static logException(error: any) {
+    private static logException(error: unknown) {
         getLogger().error('UNCAUGHT EXCEPTION:', error);
     }
 }

@@ -1,4 +1,4 @@
-export function isDefined(obj: any) {
+export function isDefined(obj: unknown) {
     if (obj === null) {
         return false;
     }

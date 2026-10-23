@@ -6,13 +6,13 @@ export function TryCatch(exception: TryCatchException, options?: TryCatchOptions
 export function TryCatch(options: TryCatchOptions): MethodDecorator;
 export function TryCatch(optionsOrException = {} as TryCatchOptions | TryCatchException, options = {} as TryCatchOptions) {
     // return the decorator function
-    return (_target: any, _key: any, descriptor: any) => {
+    return (_target: object, _key: string | symbol, descriptor: PropertyDescriptor) => {
         // store original method
         const originalMethod = descriptor.value;
 
         // check if original methods is async
         if (!options.isSynchronous) {
-            descriptor.value = async function(...args: any[]) {
+            descriptor.value = async function(...args: unknown[]) {
                 const runFunctionAsync = async (finallyFn?: () => void) => {
                     try {
                         return await originalMethod.apply(this, args);
@@ -28,7 +28,7 @@ export function TryCatch(optionsOrException = {} as TryCatchOptions | TryCatchEx
                 return await runFunctionAsync();
             };
         } else {
-            descriptor.value = function(...args: any[]) {
+            descriptor.value = function(...args: unknown[]) {
                 const runFunction = (finallyFn?: () => void) => {
                     try {
                         return originalMethod.apply(this, args);

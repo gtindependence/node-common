@@ -1,8 +1,4 @@
 {
     "singleQuote": true,
-    "tabWidth": 4,
-    "jsxSingleQuote": true,
-    "jsxBracketSameLine": true,
-    "printWidth": 120,
-    "trailingComma": "none"
+    "tabWidth": 4
 }
