@@ -1,8 +1,9 @@
 import * as Sentry from '@sentry/node';
 import { Logger } from 'log4js';
-import { Breadcrum } from '../interfaces';
-import { TryCatchEmitter, TryCatchException, TryCatchOptions } from '../try-catch';
+import { Breadcrum, Tags } from '../interfaces';
+import { BaseErrorInstance, TryCatchException, TryCatchOptions } from '../try-catch';
 import { catchError as catchErrorUtil } from '../try-catch/catch-error.util';
+import { isBaseError } from '../try-catch/is-base-error.util';
 import { getLogger } from '../utility';
 
 export interface StaticErrorHandlerConfiguration {
@@ -38,9 +39,11 @@ export class StaticErrorHandlerService {
         (logger || this.logger).info(breadcrumb.message, breadcrumb.data ? breadcrumb.data : '');
     }
 
-    static captureException(errorOrException: Error | typeof TryCatchEmitter.baseErrorClass, logger?: Logger, configuration: StaticErrorHandlerConfiguration = this.configuration) {
+    static captureException(errorOrException: Error, logger?: Logger, configuration: StaticErrorHandlerConfiguration = this.configuration) {
         // extract error from exception if exception passed in
-        let { error, tags = {} } = this.parseException(errorOrException);
+        const parsed = this.parseException(errorOrException);
+        const tags = parsed.tags ?? {};
+        let error = parsed.error;
         const {errorTags = {}} = configuration;
         if (process.env.DEPLOYMENT && error) {
             if (!this.isAcceptableSize(error, ERROR_DISPLAY_LIMIT)) {
@@ -51,12 +54,12 @@ export class StaticErrorHandlerService {
             }
 
             if (configuration.useSentry) {
-                const sentryId =  Sentry.captureException(error, { tags: {
-                    ...errorTags,
-                    ...tags,
-                } });
-
-                return sentryId;
+                return Sentry.captureException(error, {
+                    tags: {
+                        ...errorTags,
+                        ...tags,
+                    }
+                });
             }
         } else if (!error) {
 
@@ -94,18 +97,18 @@ export class StaticErrorHandlerService {
      * Use this to catch an error and handle it the same way as the TryCatch decorator outside of situations where
      * a decorator can be used / is practical
      */
-    static catchError(error: any, exception: TryCatchException, options?: TryCatchOptions);
-    static catchError(error: any, options: TryCatchOptions);
-    static catchError(error: any, optionsOrException = {} as TryCatchOptions | TryCatchException, options = {} as TryCatchOptions) {
+    static catchError(error: unknown, exception: TryCatchException, options?: TryCatchOptions);
+    static catchError(error: unknown, options: TryCatchOptions);
+    static catchError(error: unknown, optionsOrException = {} as TryCatchOptions | TryCatchException, options = {} as TryCatchOptions) {
         catchErrorUtil(error, optionsOrException, options);
     }
 
-    private static parseException(errorOrException: Error | typeof TryCatchEmitter.baseErrorClass) {
+    private static parseException(errorOrException: Error) {
         let error: Error;
-        let tags: { [key: string]: any } ;
+        let tags: Tags;
 
-        if (TryCatchEmitter.baseErrorClass && errorOrException instanceof TryCatchEmitter.baseErrorClass) {
-            const exception = errorOrException;
+        if (isBaseError(errorOrException)) {
+            const exception = errorOrException as BaseErrorInstance;
             const subError = exception.error;
             if (subError && exception.constructor) {
                 subError.name = exception.constructor.name;
@@ -117,13 +120,13 @@ export class StaticErrorHandlerService {
         }
         else {
             error = errorOrException;
-            tags = errorOrException?.tags;
+            tags = (errorOrException as BaseErrorInstance)?.tags;
         }
 
         return { error, tags: tags ?? {} };
     }
 
-    static isAcceptableSize(object: any, acceptableSizeInBytes: number) {
+    static isAcceptableSize(object: unknown, acceptableSizeInBytes: number) {
         const objectList = [];
         const stack = [object];
         let bytes = 0;
@@ -149,7 +152,7 @@ export class StaticErrorHandlerService {
      * Removes extraneous data from the error. Only the message and the stack
      * is left
      */
-    static sanitizeUnacceptablyLargeError(object: any) {
+    static sanitizeUnacceptablyLargeError<T extends object>(object: T): T {
         // get a list of all keys except the message and the stack
         const keys = Object.keys(object).filter(key => !['message', 'stack'].includes(key));
 

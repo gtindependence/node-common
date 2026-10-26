@@ -1,59 +1,56 @@
+import { Tags } from '../interfaces';
 import { getTryCatchOptions } from './get-try-catch-options';
+import { isBaseError } from './is-base-error.util';
 import { TryCatchEmitter } from './try-catch-emitter';
 import { TryCatchException } from './try-catch-exception.interface';
 import { TryCatchOptions } from './try-catch-options.interface';
 
 
-export function catchError(error: any, optionsOrException = {} as TryCatchOptions | TryCatchException, options = {} as TryCatchOptions) {
+export function catchError(error: unknown, optionsOrException = {} as TryCatchOptions | TryCatchException, options = {} as TryCatchOptions) {
     const {exception, tryCatchOptions} = getTryCatchOptions(optionsOrException, options);
     options = tryCatchOptions;
 
     // append tags to exception or error and return
-    const appendTags = (error: any) => {
+    const appendTags = <T>(target: T): T => {
         if (options && options.tags) {
+            const tagged = target as T & { tags?: Tags };
             // the preexisting tag values override any added since they are closer
             // to where the error was thrown
-            error.tags = {
+            tagged.tags = {
                 ...options.tags,
-                ...(error['tags'] || {})
+                ...(tagged.tags || {})
             };
         }
-        return error;
+        return target;
     };
-    
+
     // helper function to pass appropriate arguments to exception
-    const getException = (error: any, Exception: TryCatchException) => {
-        if (TryCatchEmitter.baseErrorClass) {
-            if (Array.isArray(TryCatchEmitter.baseErrorClass)) {
-                for (const baseErrorClass of TryCatchEmitter.baseErrorClass) {
-                    if (error instanceof baseErrorClass) {
-                        return appendTags(error);
-                    }
-                }
-            }
-            else if (error instanceof TryCatchEmitter.baseErrorClass) {
-                return appendTags(error);
-            }
+    const getException = (caughtError: unknown, exceptionClass: TryCatchException) => {
+        if (isBaseError(caughtError)) {
+            return appendTags(caughtError);
         }
-        if (new Exception(error).error) {
+
+        // the exception constructors accept the caught error as an Error
+        const errorArgument = caughtError as Error;
+        if (new exceptionClass(errorArgument).error) {
             if (options.customResponseMessage) {
-                return appendTags(new Exception(error, options.customResponseMessage));
+                return appendTags(new exceptionClass(errorArgument, options.customResponseMessage));
             }
-            return appendTags(new Exception(error));
+            return appendTags(new exceptionClass(errorArgument));
         }
-    
+
         if (options.customResponseMessage) {
-            return appendTags(new Exception(options.customResponseMessage));
+            return appendTags(new exceptionClass(options.customResponseMessage));
         }
-        return appendTags(new Exception());
+        return appendTags(new exceptionClass());
     };
 
     // wrap the error if wrapper passed
     if (options.errorWrapperClass) {
-        error = new options.errorWrapperClass(error);
+        error = new options.errorWrapperClass(error as Error);
     }
 
-    let scopedException;
+    let scopedException: unknown;
 
     // get exception instance if there is an exception passed in
     if (exception) {

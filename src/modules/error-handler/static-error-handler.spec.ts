@@ -1,15 +1,17 @@
 import * as Sentry from '@sentry/node';
 import { faker } from '@faker-js/faker/locale/en';
 import { Logger } from 'log4js';
+import { Tags } from '../interfaces';
+import { TryCatchEmitter } from '../try-catch';
 import { StaticErrorHandlerService } from './static-error-handler';
 
 class StubError extends Error {
 
-    extraData: any;
+    extraData: unknown;
 
-    tags?: any;
+    tags?: Tags;
 
-    constructor(message: string, extraData: any, tags?: any) {
+    constructor(message: string, extraData: unknown, tags?: Tags) {
         super(message);
 
         this.extraData = extraData;
@@ -27,14 +29,12 @@ describe('StaticErrorHandlerService', () => {
         jest.resetModules() // Most important - it clears the cache
         process.env = { ...OLD_ENV, DEPLOYMENT: 'aws' }; // Make a copy
 
-        jest.spyOn(Sentry, 'captureException').mockImplementation(() => {
-            return faker.string.uuid()
-        });
+        jest.spyOn(Sentry, 'captureException').mockImplementation(() => faker.string.uuid());
 
         StaticErrorHandlerService.logger = {
             error: jest.fn(),
             info: jest.fn()
-        } as any as Logger;
+        } as unknown as Logger;
         StaticErrorHandlerService.setConfiguration({
             useSentry: true
         });
@@ -68,7 +68,7 @@ describe('StaticErrorHandlerService', () => {
 
     describe('sanitizeUnacceptablyLargeError', () => {
         it('should remove any key that is not stack or message', () => {
-            let error = new StubError('test', ['data'], 'otherData');
+            let error = new StubError('test', ['data'], { tag1: 'otherData' });
 
             error = StaticErrorHandlerService.sanitizeUnacceptablyLargeError(error);
 
@@ -78,6 +78,78 @@ describe('StaticErrorHandlerService', () => {
             expect(error.stack).toBeDefined();
             expect(error.message).toEqual('test');
         })
+    });
+
+    describe('captureException with a baseErrorClass', () => {
+
+        class BaseStubException extends Error {
+            error?: Error;
+
+            tags?: Tags;
+
+            constructor(message: string, error?: Error, tags?: Tags) {
+                super(message);
+
+                this.error = error;
+
+                this.tags = tags;
+            }
+        }
+
+        class OtherBaseStubException extends BaseStubException {}
+
+        afterEach(() => {
+            TryCatchEmitter.baseErrorClass = undefined;
+        });
+
+        it('should report the wrapped error, named after the exception, with the exception tags', () => {
+            TryCatchEmitter.baseErrorClass = BaseStubException;
+            const innerError = new Error('inner');
+            const exception = new BaseStubException('outer', innerError, { tag1: 'value' });
+
+            StaticErrorHandlerService.captureException(exception);
+
+            expect(Sentry.captureException).toHaveBeenCalledWith(innerError, { tags: { tag1: 'value' } });
+            expect(innerError.name).toEqual('BaseStubException');
+        });
+
+        it('should report the exception itself when it wraps no error', () => {
+            TryCatchEmitter.baseErrorClass = BaseStubException;
+            const exception = new BaseStubException('outer', undefined, { tag1: 'value' });
+
+            StaticErrorHandlerService.captureException(exception);
+
+            expect(Sentry.captureException).toHaveBeenCalledWith(exception, { tags: { tag1: 'value' } });
+        });
+
+        it('should unwrap exceptions of any class when the baseErrorClass is an array', () => {
+            TryCatchEmitter.baseErrorClass = [Error, OtherBaseStubException];
+            const innerError = new Error('inner');
+            const exception = new OtherBaseStubException('outer', innerError, { tag1: 'value' });
+
+            StaticErrorHandlerService.captureException(exception);
+
+            expect(Sentry.captureException).toHaveBeenCalledWith(innerError, { tags: { tag1: 'value' } });
+        });
+
+        it('should merge configured error tags with the exception tags, exception tags winning', () => {
+            TryCatchEmitter.baseErrorClass = BaseStubException;
+            StaticErrorHandlerService.setConfiguration({ useSentry: true, errorTags: { app: 'test', tag1: 'configured' } });
+            const exception = new BaseStubException('outer', undefined, { tag1: 'value' });
+
+            StaticErrorHandlerService.captureException(exception);
+
+            expect(Sentry.captureException).toHaveBeenCalledWith(exception, { tags: { app: 'test', tag1: 'value' } });
+        });
+
+        it('should still report a plain error when a baseErrorClass is configured', () => {
+            TryCatchEmitter.baseErrorClass = BaseStubException;
+            const error = new Error('plain');
+
+            StaticErrorHandlerService.captureException(error);
+
+            expect(Sentry.captureException).toHaveBeenCalledWith(error, { tags: {} });
+        });
     });
 
     describe('sanitizeException', () => {
@@ -92,7 +164,7 @@ describe('StaticErrorHandlerService', () => {
 
             StaticErrorHandlerService.captureException(largeError);
 
-            expect(Sentry.captureException).toBeCalledWith(sanitizedError, {tags: {tag1: 'value'}});
+            expect(Sentry.captureException).toHaveBeenCalledWith(sanitizedError, {tags: {tag1: 'value'}});
         });
 
         it('should not sanitize an exception that is acceptably large', () => {
@@ -105,7 +177,7 @@ describe('StaticErrorHandlerService', () => {
 
             StaticErrorHandlerService.captureException(largeError);
 
-            expect(Sentry.captureException).toBeCalledWith(largeError, {tags: {tag1: 'value'}});
+            expect(Sentry.captureException).toHaveBeenCalledWith(largeError, {tags: {tag1: 'value'}});
         });
 
 
@@ -113,7 +185,7 @@ describe('StaticErrorHandlerService', () => {
             jest.spyOn(StaticErrorHandlerService, 'captureUndefinedException').mockImplementation(() =>{})
             StaticErrorHandlerService.captureException(undefined);
 
-            expect(StaticErrorHandlerService.captureUndefinedException).toBeCalled()
+            expect(StaticErrorHandlerService.captureUndefinedException).toHaveBeenCalled()
         })
     })
 });
