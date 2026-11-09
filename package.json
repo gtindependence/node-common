@@ -26,16 +26,19 @@
         "clean": "rm -f *.js && rm -f *.d.ts && rm -Rf modules",
         "test": "jest",
         "watch": "tsc -w",
-        "build": "npm run clean && tsc -p tsconfig.build.json",
-        "prepack": "npm run lint && npm run build",
-        "postpublish": "git push && git push --tags",
-        "postpack": "npm run clean",
         "lint": "eslint src",
         "lint:fix": "eslint src --fix",
-        "format": "prettier --check src"
+        "format": "prettier --check src",
+        "build": "npm run clean && tsc -p tsconfig.build.json",
+        "prepack": "npm run lint && npm run build",
+        "postpack": "npm run clean",
+        "postpublish": "git push && git push --tags",
+        "pack:dev": "npm pack",
+        "postpack:dev": "npm run build && mkdir -p ./build && mv ./*.tgz ./build && echo \"\nPack file path:\n$(pwd)/build/$(ls -tp ./build | grep -v '/$' | head -n 1)\n\""
     },
     "devDependencies": {
-        "@faker-js/faker": "9.9.0",
+        "@eslint/js": "^10.0.1",
+        "@faker-js/faker": "10.6.0",
         "@types/config": "3.3.5",
         "@types/jest": "^30.0.0",
         "@types/node": "^24.19.2",
@@ -48,7 +51,6 @@
         "typescript-eslint": "^8.72.0"
     },
     "dependencies": {
-        "@eslint/js": "^10.0.1",
         "@sentry/node": "^10.39.0",
         "config": "^3.3.9",
         "deepmerge-ts": "^8.0.2",
@@ -56,8 +58,15 @@
         "eslint-plugin-import-x": "^4.17.1",
         "log4js": "6.9.1"
     },
-    "jest": {
-        "preset": "ts-jest",
-        "testEnvironment": "node"
+    "overrides": {
+        "minimatch": "^11.0.5",
+        "jest-config": {
+            "deepmerge": "4.1.2"
+        },
+        "glob": "^14.0.4"
+    },
+    "allowScripts": {
+        "@parcel/watcher": false,
+        "unrs-resolver": false
     }
 }
