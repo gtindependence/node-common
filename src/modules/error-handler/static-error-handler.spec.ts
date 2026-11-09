@@ -1,5 +1,5 @@
-import * as Sentry from '@sentry/node';
 import { faker } from '@faker-js/faker/locale/en';
+import * as Sentry from '@sentry/node';
 import { Logger } from 'log4js';
 import { Tags } from '../interfaces';
 import { TryCatchEmitter } from '../try-catch';

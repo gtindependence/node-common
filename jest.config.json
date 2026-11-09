@@ -1,0 +1,10 @@
+{
+  "preset": "ts-jest",
+  "testEnvironment": "node",
+  "transform": {
+    "^.+\\.(ts|js)$": "ts-jest"
+  },
+  "transformIgnorePatterns": [
+    "node_modules/(?!@faker-js).+"
+  ]
+}
