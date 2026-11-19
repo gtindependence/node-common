@@ -7,12 +7,7 @@
 - [ ] All dependencies are of correct type (regular vs peer vs dev)
 - [ ] Documented any complicated or confusing code
 - [ ] No linter errors
+- [ ] All tests pass
 - [ ] Project packages successfully (`npm pack`)
 - [ ] Installed local packed version in another project and tested
 - [ ] Updated README
-
-
-#### Changes proposed in this pull request:
-
-
-**JIRA Task Link:**
